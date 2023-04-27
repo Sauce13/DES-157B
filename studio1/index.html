@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ministudio 2</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <style>
+      body {
+        margin: 0;
+      }
+      video {
+        position: absolute;
+        z-index: -1;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .control-panel {
+        display: flex;
+        align-items: center;
+        position: fixed;
+        bottom: 10px;
+        left: 10px;
+        background-color: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 5px;
+        z-index: 100;
+        gap: 20px;
+      }
+      .control-panel button {
+        background-color: transparent;
+        border: none;
+        color: #fff;
+        font-size: 24px;
+        cursor: pointer;
+      }
+      #mySec p {
+        position: absolute;
+        top: 20px;
+        right: 10px;
+        z-index: 100;
+        font-size: 50px;
+        color: pink;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      #mySec p.showing {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="control-panel">
+      <button id="playPauseBtn"><i class="fas fa-play"></i></button>
+      <button id="fullscreenBtn"><i class="fas fa-expand"></i></button>
+    </div>
+    <section id="mySec">
+      <p id="uno">Friendship is not something you learn in school.</p>
+      <p id="dos">But if you haven't learned the meaning of friendship</p>
+      <p id="tres">you really haven't learned anything.</p>
+    </section>
+    <video id="myVideo" poster="media/SS.png" muted autoplay loop playsinline>
+      <source src="media/myVideo.webm" type="video/webm" />
+      <source src="media/Untitled.mp4" type="video/mp4" />
+      <p>
+        Your browser doesn't support HTML5 video. Here is a
+        <a href="myVideo.mp4">link to the video</a> instead.
+      </p>
+    </video>
+
+    <script>
+      (function () {
+        "use strict";
+
+        const myVideo = document.getElementById("myVideo");
+        const playPauseBtn = document.getElementById("playPauseBtn");
+        const fullscreenBtn = document.getElementById("fullscreenBtn");
+        const captions = Array.from(document.querySelectorAll("#mySec p"));
+
+        const captionData = [
+          { start: 1, end: 6 },
+          { start: 7, end: 14 },
+          { start: 15, end: 18 },
+        ];
+
+        playPauseBtn.addEventListener("click", () => {
+          if (myVideo.paused) {
+            myVideo.play();
+            playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+          } else {
+            myVideo.pause();
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+          }
+        });
+
+        fullscreenBtn.addEventListener("click", () => {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+          } else {
+            document.exitFullscreen();
+          }
+        });
+
+        document.addEventListener("mousemove", (event) => {
+          const x = event.clientX;
+          const y = event.clientY;
+          const width = window.innerWidth;
+          const height = window.innerHeight;
+
+          const hue = (x / width) * 360;
+          const saturation = (y / height) * 100;
+
+          myVideo.style.filter = `hue-rotate(${hue}deg) saturate(${saturation}%)`;
+        });
+
+        myVideo.addEventListener("timeupdate", () => {
+          const currentTime = myVideo.currentTime;
+
+          captions.forEach((caption, index) => {
+            if (
+              currentTime >= captionData[index].start &&
+              currentTime <= captionData[index].end
+            ) {
+              caption.classList.add("showing");
+            } else {
+              caption.classList.remove("showing");
+            }
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>
