@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>New folder</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.rawgit.com/ardhi/Leaflet.MousePosition/master/src/L.Control.MousePosition.css"
+    />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"
+      type="text/javascript"
+    ></script>
+    <script
+      src="https://cdn.rawgit.com/ardhi/Leaflet.MousePosition/master/src/L.Control.MousePosition.js"
+      type="text/javascript"
+    ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/parse/3.3.0/parse.min.js"></script>
+
+    <style>
+      html,
+      body,
+      #map {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        z-index: 1;
+        background: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <script type="text/javascript">
+      Parse.initialize(
+        "h6qKhWyRBT2uDRbUnmtK8CX7M3I5mrtx3RVAbDiR",
+        "u61kPpqN6gDWgQgtUFTcpCkX7rvGA35uOa2Hlqmy"
+      );
+      Parse.serverURL = "https://parseapi.back4app.com/";
+      async function saveMarker(lat, lng, popupText) {
+        const Marker = Parse.Object.extend("Marker");
+        const marker = new Marker();
+
+        marker.set("lat", lat);
+        marker.set("lng", lng);
+        marker.set("popupText", popupText);
+
+        try {
+          await marker.save();
+          console.log("Marker saved successfully");
+        } catch (error) {
+          console.error("Error while saving marker: ", error);
+        }
+      }
+
+      var mapExtent = [0.0, -12000.0, 12000.0, 0.0];
+      var mapMinZoom = 2.5;
+      var mapMaxZoom = 4;
+      var mapMaxResolution = 2.0;
+      var mapMinResolution = Math.pow(2, mapMaxZoom) * mapMaxResolution;
+      var tileExtent = [0.0, -12000.0, 12000.0, 0.0];
+      var crs = L.CRS.Simple;
+      var addMarkerEnabled = false;
+
+      crs.transformation = new L.Transformation(
+        1,
+        -tileExtent[0],
+        -1,
+        tileExtent[3]
+      );
+
+      crs.scale = function (zoom) {
+        return Math.pow(2, zoom) / mapMinResolution;
+      };
+      crs.zoom = function (scale) {
+        return Math.log(scale * mapMinResolution) / Math.LN2;
+      };
+      var imageBounds = [
+        crs.unproject(L.point(mapExtent[0], mapExtent[1])),
+        crs.unproject(L.point(mapExtent[2], mapExtent[3])),
+      ];
+
+      var layer;
+      var map = new L.Map("map", {
+        maxZoom: mapMaxZoom,
+        minZoom: mapMinZoom,
+        crs: crs,
+        maxBounds: imageBounds,
+        maxBoundsViscosity: 1.0,
+      });
+
+      layer = L.tileLayer("./images/{z}/{x}/{y}.jpg", {
+        minZoom: mapMinZoom,
+        maxZoom: mapMaxZoom,
+        tileSize: L.point(512, 512),
+        noWrap: true,
+        tms: false,
+      }).addTo(map);
+      map.fitBounds([
+        crs.unproject(L.point(mapExtent[2], mapExtent[3])),
+        crs.unproject(L.point(mapExtent[0], mapExtent[1])),
+      ]);
+      L.control.mousePosition().addTo(map);
+      async function fetchMarkers() {
+        const Marker = Parse.Object.extend("Marker");
+        const query = new Parse.Query(Marker);
+
+        try {
+          const results = await query.find();
+
+          for (let i = 0; i < results.length; i++) {
+            var point = L.latLng(results[i].get("lat"), results[i].get("lng"));
+
+            L.marker(point)
+              .addTo(map)
+              .bindPopup(results[i].get("popupText"))
+              .openPopup();
+
+            var bufferRadius = map.getSize().x * 0.1; // 10% of the map width
+
+            L.circle(point, {
+              radius: bufferRadius,
+              fillOpacity: 0, // make the circle invisible
+            })
+              .addTo(map)
+              .bindPopup(results[i].get("popupText"));
+          }
+        } catch (error) {
+          console.error("Error while fetching markers: ", error);
+        }
+      }
+
+      var AddMarkerControl = L.Control.extend({
+        onAdd: function (map) {
+          var container = L.DomUtil.create(
+            "div",
+            "leaflet-bar leaflet-control leaflet-control-custom"
+          );
+          container.style.backgroundColor = "white";
+          container.style.width = "30px";
+          container.style.height = "30px";
+          container.style.backgroundImage = "url('path-to-your-icon.png')"; // add a custom image if you want
+          container.style.backgroundSize = "30px 30px";
+
+          container.onclick = function (event) {
+            addMarkerEnabled = !addMarkerEnabled; // toggle addMarkerEnabled
+            L.DomEvent.stopPropagation(event); // prevent event from bubbling up to map
+          };
+
+          L.DomEvent.disableClickPropagation(container); // disable event bubbling
+
+          return container;
+        },
+        options: {
+          position: "topleft",
+        },
+      });
+      map.addControl(new AddMarkerControl());
+
+      map.on("click", function (e) {
+        if (addMarkerEnabled) {
+          var popupText = prompt(
+            "Please enter your popup text:",
+            "Custom text here"
+          );
+
+          L.marker(e.latlng).addTo(map);
+
+          var bufferRadius = map.getSize().x * 0.1; // 10% of the map width
+
+          L.circle(e.latlng, {
+            radius: bufferRadius,
+            fillOpacity: 0, // make the circle invisible
+          })
+            .addTo(map)
+            .bindPopup(popupText)
+            .openPopup();
+
+          saveMarker(e.latlng.lat, e.latlng.lng, popupText);
+
+          addMarkerEnabled = false; // turn off marker adding after placing one
+        }
+      });
+      fetchMarkers();
+    </script>
+  </body>
+</html>
